@@ -1,0 +1,895 @@
+import React, { useState, useEffect } from 'react';
+import { Package, TrendingUp, AlertTriangle, ShoppingCart, BarChart3, Settings, Plus, Search, Edit2, Trash2, X, Home, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Box, Truck, Users, FileText, CheckCircle, Clock, XCircle } from 'lucide-react';
+
+// Mock Router (for demonstration - in production use react-router-dom)
+const Router = ({ children }) => {
+  const [currentPath, setCurrentPath] = useState(window.location.hash.slice(1) || '/');
+  
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentPath(window.location.hash.slice(1) || '/');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigate = (path) => {
+    window.location.hash = path;
+    setCurrentPath(path);
+  };
+
+  return children({ currentPath, navigate });
+};
+
+const InventoryManagementSystem = () => {
+  const [items, setItems] = useState([
+    { id: 1, name: 'Laptop - Dell XPS 15', sku: 'LAP-001', quantity: 45, reorderPoint: 20, category: 'Electronics', price: 1299.99, supplier: 'Tech Direct', lastOrdered: '2024-01-15' },
+    { id: 2, name: 'Wireless Mouse', sku: 'ACC-002', quantity: 15, reorderPoint: 25, category: 'Accessories', price: 29.99, supplier: 'Office Plus', lastOrdered: '2024-02-01' },
+    { id: 3, name: 'USB-C Cable 2m', sku: 'ACC-003', quantity: 150, reorderPoint: 50, category: 'Accessories', price: 12.99, supplier: 'Cable Co', lastOrdered: '2024-01-20' },
+    { id: 4, name: 'Office Chair - Ergonomic', sku: 'FUR-001', quantity: 8, reorderPoint: 10, category: 'Furniture', price: 299.99, supplier: 'Furniture Hub', lastOrdered: '2024-01-10' },
+    { id: 5, name: 'Monitor 27" 4K', sku: 'MON-001', quantity: 0, reorderPoint: 15, category: 'Electronics', price: 449.99, supplier: 'Tech Direct', lastOrdered: '2024-01-05' },
+    { id: 6, name: 'Keyboard - Mechanical', sku: 'ACC-004', quantity: 62, reorderPoint: 30, category: 'Accessories', price: 89.99, supplier: 'Office Plus', lastOrdered: '2024-02-10' },
+  ]);
+
+  const [orders, setOrders] = useState([
+    { id: 1, orderNumber: 'ORD-2024-001', supplier: 'Tech Direct', items: 3, total: 3599.97, status: 'Delivered', date: '2024-02-01' },
+    { id: 2, orderNumber: 'ORD-2024-002', supplier: 'Office Plus', items: 5, total: 849.95, status: 'In Transit', date: '2024-02-10' },
+    { id: 3, orderNumber: 'ORD-2024-003', supplier: 'Furniture Hub', items: 2, total: 599.98, status: 'Processing', date: '2024-02-12' },
+    { id: 4, orderNumber: 'ORD-2024-004', supplier: 'Cable Co', items: 10, total: 129.90, status: 'Delivered', date: '2024-02-05' },
+  ]);
+
+  const [suppliers, setSuppliers] = useState([
+    { id: 1, name: 'Tech Direct', contact: 'john@techdirect.com', phone: '555-0101', products: 45, rating: 4.8 },
+    { id: 2, name: 'Office Plus', contact: 'sales@officeplus.com', phone: '555-0102', products: 32, rating: 4.5 },
+    { id: 3, name: 'Furniture Hub', contact: 'info@furniturehub.com', phone: '555-0103', products: 18, rating: 4.7 },
+    { id: 4, name: 'Cable Co', contact: 'orders@cableco.com', phone: '555-0104', products: 25, rating: 4.6 },
+  ]);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+
+  const [formData, setFormData] = useState({
+    name: '', sku: '', quantity: '', reorderPoint: '', category: '', price: '', supplier: ''
+  });
+
+  const categories = ['All', 'Electronics', 'Accessories', 'Furniture'];
+
+  const getStatus = (quantity, reorderPoint) => {
+    if (quantity === 0) return 'Out of Stock';
+    if (quantity <= reorderPoint) return 'Low Stock';
+    return 'In Stock';
+  };
+
+  const handleAddItem = () => {
+    if (!formData.name || !formData.sku || !formData.quantity || !formData.category || !formData.price) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const newItem = {
+      id: items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1,
+      name: formData.name,
+      sku: formData.sku,
+      quantity: parseInt(formData.quantity),
+      reorderPoint: parseInt(formData.reorderPoint) || 10,
+      category: formData.category,
+      price: parseFloat(formData.price),
+      supplier: formData.supplier || 'N/A',
+      lastOrdered: new Date().toISOString().split('T')[0]
+    };
+
+    setItems([...items, newItem]);
+    setShowAddModal(false);
+    resetForm();
+  };
+
+  const handleEditItem = () => {
+    const updatedItems = items.map(item => {
+      if (item.id === editingItem.id) {
+        return {
+          ...item,
+          name: formData.name,
+          sku: formData.sku,
+          quantity: parseInt(formData.quantity),
+          reorderPoint: parseInt(formData.reorderPoint),
+          category: formData.category,
+          price: parseFloat(formData.price),
+          supplier: formData.supplier
+        };
+      }
+      return item;
+    });
+
+    setItems(updatedItems);
+    setEditingItem(null);
+    resetForm();
+  };
+
+  const handleDeleteItem = (id) => {
+    if (window.confirm('Are you sure you want to delete this item?')) {
+      setItems(items.filter(item => item.id !== id));
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', sku: '', quantity: '', reorderPoint: '', category: '', price: '', supplier: '' });
+  };
+
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name,
+      sku: item.sku,
+      quantity: item.quantity.toString(),
+      reorderPoint: item.reorderPoint.toString(),
+      category: item.category,
+      price: item.price.toString(),
+      supplier: item.supplier || ''
+    });
+  };
+
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === 'All' || item.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const lowStockItems = items.filter(item => {
+    const status = getStatus(item.quantity, item.reorderPoint);
+    return status === 'Low Stock' || status === 'Out of Stock';
+  }).length;
+  const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+
+  return (
+    <Router>
+      {({ currentPath, navigate }) => (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+          <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+            
+            * {
+              font-family: 'Sora', sans-serif;
+            }
+            
+            .mono {
+              font-family: 'JetBrains Mono', monospace;
+            }
+            
+            @keyframes slideIn {
+              from {
+                opacity: 0;
+                transform: translateY(20px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.6; }
+            }
+            
+            .animate-slide-in {
+              animation: slideIn 0.5s ease-out;
+            }
+            
+            .animate-fade-in {
+              animation: fadeIn 0.3s ease-out;
+            }
+            
+            .stat-card {
+              background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+              backdrop-filter: blur(10px);
+              border: 1px solid rgba(255,255,255,0.5);
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .stat-card:hover {
+              transform: translateY(-4px);
+              box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+              border-color: rgba(99, 102, 241, 0.3);
+            }
+            
+            .nav-item {
+              position: relative;
+              transition: all 0.2s ease;
+            }
+            
+            .nav-item::before {
+              content: '';
+              position: absolute;
+              left: 0;
+              top: 50%;
+              transform: translateY(-50%);
+              width: 3px;
+              height: 0;
+              background: linear-gradient(180deg, #6366f1, #8b5cf6);
+              transition: height 0.2s ease;
+            }
+            
+            .nav-item.active::before {
+              height: 100%;
+            }
+            
+            .nav-item.active {
+              background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
+              color: #6366f1;
+            }
+            
+            .glass-panel {
+              background: rgba(255, 255, 255, 0.8);
+              backdrop-filter: blur(20px);
+              border: 1px solid rgba(255, 255, 255, 0.6);
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+            }
+            
+            .status-badge {
+              font-weight: 600;
+              letter-spacing: 0.02em;
+              text-transform: uppercase;
+              font-size: 0.7rem;
+            }
+            
+            .gradient-text {
+              background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              background-clip: text;
+            }
+            
+            input:focus, select:focus, textarea:focus {
+              outline: none;
+              border-color: #6366f1;
+              box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            }
+            
+            button {
+              transition: all 0.2s ease;
+            }
+            
+            button:active {
+              transform: scale(0.98);
+            }
+            
+            .table-row {
+              transition: all 0.2s ease;
+            }
+            
+            .table-row:hover {
+              background: linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, transparent 100%);
+            }
+          `}</style>
+
+          <div className="flex min-h-screen">
+            {/* Sidebar */}
+            <aside className="w-64 glass-panel border-r border-white/40 flex flex-col">
+              <div className="p-6 border-b border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <Package className="text-white" size={20} />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold gradient-text">StockFlow</h1>
+                    <p className="text-xs text-slate-500 mono">v2.4.1</p>
+                  </div>
+                </div>
+              </div>
+
+              <nav className="flex-1 p-4 space-y-1">
+                <a
+                  href="#/"
+                  className={`nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer ${currentPath === '/' ? 'active font-semibold' : 'text-slate-600 hover:bg-slate-100/50'}`}
+                >
+                  <Home size={20} />
+                  <span>Dashboard</span>
+                </a>
+                <a
+                  href="#/inventory"
+                  className={`nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer ${currentPath === '/inventory' ? 'active font-semibold' : 'text-slate-600 hover:bg-slate-100/50'}`}
+                >
+                  <Box size={20} />
+                  <span>Inventory</span>
+                </a>
+                <a
+                  href="#/orders"
+                  className={`nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer ${currentPath === '/orders' ? 'active font-semibold' : 'text-slate-600 hover:bg-slate-100/50'}`}
+                >
+                  <ShoppingCart size={20} />
+                  <span>Orders</span>
+                </a>
+                <a
+                  href="#/suppliers"
+                  className={`nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer ${currentPath === '/suppliers' ? 'active font-semibold' : 'text-slate-600 hover:bg-slate-100/50'}`}
+                >
+                  <Truck size={20} />
+                  <span>Suppliers</span>
+                </a>
+                <a
+                  href="#/analytics"
+                  className={`nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer ${currentPath === '/analytics' ? 'active font-semibold' : 'text-slate-600 hover:bg-slate-100/50'}`}
+                >
+                  <BarChart3 size={20} />
+                  <span>Analytics</span>
+                </a>
+                <a
+                  href="#/settings"
+                  className={`nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer ${currentPath === '/settings' ? 'active font-semibold' : 'text-slate-600 hover:bg-slate-100/50'}`}
+                >
+                  <Settings size={20} />
+                  <span>Settings</span>
+                </a>
+              </nav>
+
+              <div className="p-4 border-t border-slate-200/50">
+                <div className="stat-card rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                      <AlertTriangle className="text-orange-600" size={16} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600 font-medium">Low Stock Alert</p>
+                      <p className="text-2xl font-bold text-orange-600">{lowStockItems}</p>
+                    </div>
+                  </div>
+                  <button className="w-full text-xs bg-orange-50 text-orange-700 px-3 py-2 rounded-lg hover:bg-orange-100 font-semibold">
+                    View Items
+                  </button>
+                </div>
+              </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto">
+              {/* Dashboard Page */}
+              {currentPath === '/' && (
+                <div className="p-8 animate-slide-in">
+                  <div className="mb-8">
+                    <h2 className="text-4xl font-bold text-slate-900 mb-2">Dashboard</h2>
+                    <p className="text-slate-600">Welcome back! Here's your inventory overview.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="stat-card rounded-2xl p-6 shadow-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
+                          <Package className="text-white" size={24} />
+                        </div>
+                        <div className="flex items-center gap-1 text-green-600 text-sm font-semibold">
+                          <ArrowUpRight size={16} />
+                          <span>12%</span>
+                        </div>
+                      </div>
+                      <p className="text-slate-600 text-sm font-medium mb-1">Total Items</p>
+                      <p className="text-4xl font-bold text-slate-900 mb-1">{totalItems}</p>
+                      <p className="text-xs text-slate-500">Across all categories</p>
+                    </div>
+
+                    <div className="stat-card rounded-2xl p-6 shadow-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                          <DollarSign className="text-white" size={24} />
+                        </div>
+                        <div className="flex items-center gap-1 text-green-600 text-sm font-semibold">
+                          <ArrowUpRight size={16} />
+                          <span>8%</span>
+                        </div>
+                      </div>
+                      <p className="text-slate-600 text-sm font-medium mb-1">Total Value</p>
+                      <p className="text-4xl font-bold text-slate-900 mb-1">${totalValue.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</p>
+                      <p className="text-xs text-slate-500">Inventory valuation</p>
+                    </div>
+
+                    <div className="stat-card rounded-2xl p-6 shadow-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg">
+                          <AlertTriangle className="text-white" size={24} />
+                        </div>
+                        <div className="flex items-center gap-1 text-red-600 text-sm font-semibold">
+                          <ArrowDownRight size={16} />
+                          <span>3</span>
+                        </div>
+                      </div>
+                      <p className="text-slate-600 text-sm font-medium mb-1">Low Stock</p>
+                      <p className="text-4xl font-bold text-slate-900 mb-1">{lowStockItems}</p>
+                      <p className="text-xs text-slate-500">Needs reordering</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div className="glass-panel rounded-2xl p-6 shadow-lg">
+                      <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <Clock size={20} className="text-indigo-600" />
+                        Recent Orders
+                      </h3>
+                      <div className="space-y-3">
+                        {orders.slice(0, 4).map(order => (
+                          <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl">
+                            <div>
+                              <p className="font-semibold text-slate-900 mono text-sm">{order.orderNumber}</p>
+                              <p className="text-xs text-slate-600">{order.supplier} • {order.items} items</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-slate-900">${order.total.toFixed(2)}</p>
+                              <span className={`status-badge px-2 py-1 rounded-lg ${
+                                order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                order.status === 'In Transit' ? 'bg-blue-100 text-blue-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {order.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="glass-panel rounded-2xl p-6 shadow-lg">
+                      <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <TrendingUp size={20} className="text-indigo-600" />
+                        Category Breakdown
+                      </h3>
+                      <div className="space-y-4">
+                        {['Electronics', 'Accessories', 'Furniture'].map(cat => {
+                          const catItems = items.filter(i => i.category === cat);
+                          const catValue = catItems.reduce((sum, i) => sum + (i.quantity * i.price), 0);
+                          const percentage = (catValue / totalValue * 100).toFixed(1);
+                          return (
+                            <div key={cat}>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-semibold text-slate-700">{cat}</span>
+                                <span className="text-sm font-bold text-slate-900">{percentage}%</span>
+                              </div>
+                              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl p-6 shadow-lg">
+                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                      <AlertTriangle size={20} className="text-orange-600" />
+                      Items Requiring Attention
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200">
+                            <th className="text-left py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Product</th>
+                            <th className="text-left py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider">SKU</th>
+                            <th className="text-left py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Stock</th>
+                            <th className="text-left py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.filter(item => getStatus(item.quantity, item.reorderPoint) !== 'In Stock').map(item => (
+                            <tr key={item.id} className="table-row border-b border-slate-100">
+                              <td className="py-3 px-4 font-semibold text-slate-900">{item.name}</td>
+                              <td className="py-3 px-4 text-slate-600 mono text-sm">{item.sku}</td>
+                              <td className="py-3 px-4 font-bold text-slate-900">{item.quantity}</td>
+                              <td className="py-3 px-4">
+                                <span className={`status-badge px-3 py-1 rounded-lg ${
+                                  item.quantity === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                                }`}>
+                                  {getStatus(item.quantity, item.reorderPoint)}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Inventory Page */}
+              {currentPath === '/inventory' && (
+                <div className="p-8 animate-slide-in">
+                  <div className="mb-8">
+                    <h2 className="text-4xl font-bold text-slate-900 mb-2">Inventory Management</h2>
+                    <p className="text-slate-600">Manage your complete product inventory</p>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl p-6 mb-6 shadow-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="md:col-span-2">
+                        <div className="relative">
+                          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+                          <input
+                            type="text"
+                            placeholder="Search products by name or SKU..."
+                            className="w-full pl-12 pr-4 py-3 border-2 border-slate-200 rounded-xl transition-all"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <select
+                        className="px-4 py-3 border-2 border-slate-200 rounded-xl transition-all font-medium"
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                      >
+                        {categories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg font-semibold flex items-center gap-2"
+                    >
+                      <Plus size={20} />
+                      Add New Product
+                    </button>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl shadow-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-50/50 border-b-2 border-slate-200">
+                          <tr>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Product</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">SKU</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Category</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Quantity</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Price</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredItems.map(item => (
+                            <tr key={item.id} className="table-row">
+                              <td className="px-6 py-4 font-semibold text-slate-900">{item.name}</td>
+                              <td className="px-6 py-4 text-slate-600 mono text-sm">{item.sku}</td>
+                              <td className="px-6 py-4">
+                                <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium">
+                                  {item.category}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 font-bold text-slate-900">{item.quantity}</td>
+                              <td className="px-6 py-4 font-semibold text-slate-900">${item.price.toFixed(2)}</td>
+                              <td className="px-6 py-4">
+                                <span className={`status-badge px-3 py-1 rounded-lg ${
+                                  getStatus(item.quantity, item.reorderPoint) === 'In Stock' ? 'bg-green-100 text-green-700' :
+                                  getStatus(item.quantity, item.reorderPoint) === 'Low Stock' ? 'bg-orange-100 text-orange-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {getStatus(item.quantity, item.reorderPoint)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => openEditModal(item)}
+                                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                  >
+                                    <Edit2 size={18} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteItem(item.id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Orders Page */}
+              {currentPath === '/orders' && (
+                <div className="p-8 animate-slide-in">
+                  <div className="mb-8">
+                    <h2 className="text-4xl font-bold text-slate-900 mb-2">Purchase Orders</h2>
+                    <p className="text-slate-600">Track and manage your purchase orders</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    {[
+                      { label: 'Total Orders', value: orders.length, icon: FileText, color: 'blue' },
+                      { label: 'Delivered', value: orders.filter(o => o.status === 'Delivered').length, icon: CheckCircle, color: 'green' },
+                      { label: 'In Transit', value: orders.filter(o => o.status === 'In Transit').length, icon: Truck, color: 'blue' },
+                      { label: 'Processing', value: orders.filter(o => o.status === 'Processing').length, icon: Clock, color: 'orange' }
+                    ].map((stat, i) => (
+                      <div key={i} className="stat-card rounded-2xl p-6 shadow-lg">
+                        <div className={`w-10 h-10 rounded-xl bg-${stat.color}-100 flex items-center justify-center mb-4`}>
+                          <stat.icon className={`text-${stat.color}-600`} size={20} />
+                        </div>
+                        <p className="text-slate-600 text-sm font-medium mb-1">{stat.label}</p>
+                        <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="glass-panel rounded-2xl shadow-lg overflow-hidden">
+                    <div className="p-6 border-b border-slate-200">
+                      <button className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg font-semibold flex items-center gap-2">
+                        <Plus size={20} />
+                        New Purchase Order
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-50/50 border-b-2 border-slate-200">
+                          <tr>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Order Number</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Supplier</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Items</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Total</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Date</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {orders.map(order => (
+                            <tr key={order.id} className="table-row">
+                              <td className="px-6 py-4 font-bold text-slate-900 mono">{order.orderNumber}</td>
+                              <td className="px-6 py-4 font-semibold text-slate-700">{order.supplier}</td>
+                              <td className="px-6 py-4 text-slate-600">{order.items} items</td>
+                              <td className="px-6 py-4 font-bold text-slate-900">${order.total.toFixed(2)}</td>
+                              <td className="px-6 py-4 text-slate-600">{order.date}</td>
+                              <td className="px-6 py-4">
+                                <span className={`status-badge px-3 py-1 rounded-lg flex items-center gap-2 w-fit ${
+                                  order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                  order.status === 'In Transit' ? 'bg-blue-100 text-blue-700' :
+                                  'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                  {order.status === 'Delivered' && <CheckCircle size={14} />}
+                                  {order.status === 'In Transit' && <Truck size={14} />}
+                                  {order.status === 'Processing' && <Clock size={14} />}
+                                  {order.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Suppliers Page */}
+              {currentPath === '/suppliers' && (
+                <div className="p-8 animate-slide-in">
+                  <div className="mb-8">
+                    <h2 className="text-4xl font-bold text-slate-900 mb-2">Suppliers</h2>
+                    <p className="text-slate-600">Manage your supplier relationships</p>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl p-6 mb-6 shadow-lg">
+                    <button className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg font-semibold flex items-center gap-2">
+                      <Plus size={20} />
+                      Add New Supplier
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {suppliers.map(supplier => (
+                      <div key={supplier.id} className="glass-panel rounded-2xl p-6 shadow-lg">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-1">{supplier.name}</h3>
+                            <p className="text-sm text-slate-600">{supplier.products} products</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="text-yellow-500">★</div>
+                            <span className="font-bold text-slate-900">{supplier.rating}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Users size={16} />
+                            <span>{supplier.contact}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-slate-600 mono">
+                            <span>📞</span>
+                            <span>{supplier.phone}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button className="flex-1 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl hover:bg-indigo-100 font-semibold text-sm">
+                            View Products
+                          </button>
+                          <button className="flex-1 bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 font-semibold text-sm">
+                            Contact
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Analytics Page */}
+              {currentPath === '/analytics' && (
+                <div className="p-8 animate-slide-in">
+                  <div className="mb-8">
+                    <h2 className="text-4xl font-bold text-slate-900 mb-2">Analytics</h2>
+                    <p className="text-slate-600">Insights and reports on your inventory</p>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl p-8 shadow-lg text-center">
+                    <BarChart3 className="mx-auto text-slate-300 mb-4" size={64} />
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Analytics Dashboard</h3>
+                    <p className="text-slate-600 mb-6">Detailed charts and reports coming soon</p>
+                    <button className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg font-semibold">
+                      Generate Report
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Settings Page */}
+              {currentPath === '/settings' && (
+                <div className="p-8 animate-slide-in">
+                  <div className="mb-8">
+                    <h2 className="text-4xl font-bold text-slate-900 mb-2">Settings</h2>
+                    <p className="text-slate-600">Configure your inventory system</p>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl p-8 shadow-lg">
+                    <Settings className="mx-auto text-slate-300 mb-4" size={64} />
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2 text-center">System Settings</h3>
+                    <p className="text-slate-600 text-center">Configuration options coming soon</p>
+                  </div>
+                </div>
+              )}
+            </main>
+          </div>
+
+          {/* Add/Edit Modal */}
+          {(showAddModal || editingItem) && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+              <div className="glass-panel rounded-2xl shadow-2xl max-w-2xl w-full p-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-3xl font-bold gradient-text">
+                    {editingItem ? 'Edit Product' : 'Add New Product'}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setEditingItem(null);
+                      resetForm();
+                    }}
+                    className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-xl transition"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Product Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl transition-all"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">SKU</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl transition-all mono"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({...formData, sku: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
+                    <select
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl transition-all"
+                      value={formData.category}
+                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    >
+                      <option value="">Select category</option>
+                      <option value="Electronics">Electronics</option>
+                      <option value="Accessories">Accessories</option>
+                      <option value="Furniture">Furniture</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Quantity</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl transition-all"
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Reorder Point</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl transition-all"
+                      value={formData.reorderPoint}
+                      onChange={(e) => setFormData({...formData, reorderPoint: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Price ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl transition-all"
+                      value={formData.price}
+                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Supplier</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl transition-all"
+                      value={formData.supplier}
+                      onChange={(e) => setFormData({...formData, supplier: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={editingItem ? handleEditItem : handleAddItem}
+                    className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg font-bold"
+                  >
+                    {editingItem ? 'Update Product' : 'Add Product'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setEditingItem(null);
+                      resetForm();
+                    }}
+                    className="flex-1 bg-slate-200 text-slate-800 px-6 py-3 rounded-xl hover:bg-slate-300 font-bold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Router>
+  );
+};
+
+export default InventoryManagementSystem;
